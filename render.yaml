@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: riceguard-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ROBOFLOW_API_KEY
+        sync: false
+      - key: ROBOFLOW_API_URL
+        value: https://serverless.roboflow.com
+      - key: ROBOFLOW_MODEL_ID
+        value: rice-l9w5o/5
+      - key: ROBOFLOW_TIMEOUT_SECONDS
+        value: "60"
+
+      - key: PX_TO_MM
+        value: "0.18"
+      - key: TARGET_MEDIAN_GRAIN_LENGTH_MM
+        value: "7.4"
+
+      - key: CLAMP_LENGTH_MM_MIN
+        value: "5.5"
+      - key: CLAMP_LENGTH_MM_MAX
+        value: "9.5"
+      - key: CLAMP_WIDTH_MM_MIN
+        value: "1.4"
+      - key: CLAMP_WIDTH_MM_MAX
+        value: "2.8"
+
+      - key: WIDTH_CORRECTION_FACTOR
+        value: "0.42"
+      - key: BROKEN_RELATIVE_LENGTH_FACTOR
+        value: "0.6"
+
+      - key: MAX_CHALKY_RATIO
+        value: "0.35"

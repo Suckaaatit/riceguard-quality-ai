@@ -27,14 +27,14 @@ PX_TO_MM = float(os.getenv("PX_TO_MM", "0.18"))
 TARGET_MEDIAN_GRAIN_LENGTH_MM = float(os.getenv("TARGET_MEDIAN_GRAIN_LENGTH_MM", "7.4"))
 WIDTH_CORRECTION_FACTOR = float(os.getenv("WIDTH_CORRECTION_FACTOR", "0.42"))
 
-CLAMP_LENGTH_MM_MIN = 5.5
-CLAMP_LENGTH_MM_MAX = 9.5
-CLAMP_WIDTH_MM_MIN = 1.4
-CLAMP_WIDTH_MM_MAX = 2.8
+CLAMP_LENGTH_MM_MIN = float(os.getenv("CLAMP_LENGTH_MM_MIN", "5.5"))
+CLAMP_LENGTH_MM_MAX = float(os.getenv("CLAMP_LENGTH_MM_MAX", "9.5"))
+CLAMP_WIDTH_MM_MIN = float(os.getenv("CLAMP_WIDTH_MM_MIN", "1.4"))
+CLAMP_WIDTH_MM_MAX = float(os.getenv("CLAMP_WIDTH_MM_MAX", "2.8"))
 
 BROKEN_RELATIVE_LENGTH_FACTOR = float(os.getenv("BROKEN_RELATIVE_LENGTH_FACTOR", "0.6"))
 
-MAX_CHALKY_RATIO = 0.35  # 🚨 CRITICAL FIX
+MAX_CHALKY_RATIO = float(os.getenv("MAX_CHALKY_RATIO", "0.35"))
 
 if not ROBOFLOW_API_KEY or not ROBOFLOW_MODEL_ID:
     raise RuntimeError("Missing Roboflow credentials")
@@ -98,6 +98,20 @@ def is_broken(c): return "broken" in c
 def is_chalky(c): return "chalky" in c
 def is_foreign(c): return "foreign" in c
 
+def is_foreign_by_geometry(
+    *,
+    width_mm_raw: float,
+    aspect_ratio: float,
+    area_ratio: float,
+) -> bool:
+    if width_mm_raw >= 4.0:
+        return True
+    if aspect_ratio <= 1.15:
+        return True
+    if area_ratio >= 4.0:
+        return True
+    return False
+
 # ======================
 # CORE
 # ======================
@@ -131,13 +145,24 @@ def analyze_with_roboflow(image_bytes: bytes) -> AnalysisResult:
         if good_lengths_px else 0
     )
 
+    areas_mm2 = [float(g["length_px"] * g["width_px"]) * (px_to_mm ** 2) for g in grains]
+    median_area_mm2 = float(np.median(areas_mm2)) if areas_mm2 else 0.0
+
     for g in grains:
         cls = g["cls"]
         length_mm_raw = g["length_px"] * px_to_mm
         width_mm_raw = g["width_px"] * px_to_mm
 
-        # FOREIGN fallback (paper clip / large object)
-        if length_mm_raw > 3 * TARGET_MEDIAN_GRAIN_LENGTH_MM:
+        area_mm2 = float(g["length_px"] * g["width_px"]) * (px_to_mm ** 2)
+        area_ratio = (area_mm2 / (median_area_mm2 + 1e-9)) if median_area_mm2 > 0 else 0.0
+        aspect_ratio = length_mm_raw / (width_mm_raw + 1e-9)
+
+        # FOREIGN (rule-based geometry fallback)
+        if is_foreign(cls) or is_foreign_by_geometry(
+            width_mm_raw=width_mm_raw,
+            aspect_ratio=aspect_ratio,
+            area_ratio=area_ratio,
+        ):
             counts["foreign"] += 1
             continue
 
