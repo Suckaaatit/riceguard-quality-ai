@@ -255,3 +255,14 @@ def health():
 @app.get("/test")
 def test():
     return {"status": "backend running"}
+
+
+@app.get("/")
+def root():
+    return {
+        "service": "RiceGuard API",
+        "status": "ok",
+        "health": "/health",
+        "test": "/test",
+        "docs": "/docs",
+    }
