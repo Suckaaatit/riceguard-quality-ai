@@ -35,12 +35,18 @@ CLAMP_WIDTH_MM_MAX = float(os.getenv("CLAMP_WIDTH_MM_MAX", "2.8"))
 BROKEN_RELATIVE_LENGTH_FACTOR = float(os.getenv("BROKEN_RELATIVE_LENGTH_FACTOR", "0.6"))
 
 MAX_CHALKY_RATIO = float(os.getenv("MAX_CHALKY_RATIO", "0.35"))
-
-if not ROBOFLOW_API_KEY or not ROBOFLOW_MODEL_ID:
-    raise RuntimeError("Missing Roboflow credentials")
-
-rf = InferenceHTTPClient(api_url=ROBOFLOW_API_URL, api_key=ROBOFLOW_API_KEY)
 logger = logging.getLogger("riceguard")
+
+_rf_client = None
+
+
+def get_rf_client() -> InferenceHTTPClient:
+    global _rf_client
+    if not ROBOFLOW_API_KEY or not ROBOFLOW_MODEL_ID:
+        raise RuntimeError("Missing Roboflow credentials")
+    if _rf_client is None:
+        _rf_client = InferenceHTTPClient(api_url=ROBOFLOW_API_URL, api_key=ROBOFLOW_API_KEY)
+    return _rf_client
 
 # ======================
 # APP
@@ -117,6 +123,7 @@ def is_foreign_by_geometry(
 # ======================
 def analyze_with_roboflow(image_bytes: bytes) -> AnalysisResult:
     image_b64 = to_base64_jpeg(image_bytes)
+    rf = get_rf_client()
     result = rf.infer(image_b64, model_id=ROBOFLOW_MODEL_ID)
     preds = result.get("predictions", [])
 
@@ -230,6 +237,10 @@ async def analyze(request: Request, file: UploadFile = File(...)):
         )
     except asyncio.TimeoutError:
         raise HTTPException(504, {"error": "roboflow_timeout", "request_id": rid})
+    except RuntimeError as e:
+        if "Missing Roboflow credentials" in str(e):
+            raise HTTPException(500, {"error": "missing_roboflow_credentials", "request_id": rid})
+        raise
     except ValueError:
         raise HTTPException(400, {"error": "invalid_image", "request_id": rid})
     except Exception:
