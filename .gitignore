@@ -1,0 +1,27 @@
+ # Env / secrets
+.env
+.env.*
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Local artifacts
+backend/*.pt
+backend/*.json
+
+# Local tests / scratch scripts
+test_*.py
+debug_*.py
+fix_env.py
+update_env.py
+check_env.py
