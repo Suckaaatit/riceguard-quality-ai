@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Qualty.ai-Analyser</string>
+    <string name="title_activity_main">Qualty.ai-Analyser</string>
+    <string name="package_name">com.ximbizz.qualityai</string>
+    <string name="custom_url_scheme">com.ximbizz.qualityai</string>
+</resources>
